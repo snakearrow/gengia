@@ -3,7 +3,7 @@ import soundfile
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from progress.bar import Bar
+from progress.bar import ChargingBar
 from time import sleep
 from math import log10
 from Audio import Audio
@@ -14,19 +14,23 @@ def record(background_noise_threshold: int):
     
     print(f"recording with background noise threshold: {background_noise_threshold} dBFS")
     while True:
+        print("")
         rec_name = input("Name of command: ")
         duration = input("Duration in seconds (default=2): ")
         if duration == "":
-            duration = 2.0
+            duration = 2
         else:
             duration = int(duration)
         
         print(f"Will record for {duration} seconds. Press Enter to start")
         input()
-        print("Recording...", end='', flush=True)
+        bar = ChargingBar('Recording', max=duration, check_tty=False)
         recording = sounddevice.rec(int(duration * fs), samplerate=fs, channels=1, dtype="float32")
+        for i in range(duration):
+            sleep(1)
+            bar.next()
         sounddevice.wait()
-        print(" done", flush=True)
+        bar.finish()
         # post-process audio file: amplify and truncate silence
         audio = Audio(data=recording, samplerate=fs)
         audio.amplify()
@@ -35,11 +39,11 @@ def record(background_noise_threshold: int):
         soundfile.write(f"commands/{rec_name}.wav", audio.get_data(), fs)
 
 
-def monitor_background_noise(duration_sec: int = 5):
+def monitor_background_noise(duration_sec: int = 6):
     fs = 44100
     duration = duration_sec
     print("Starting background noise detection. Please say: 'this is a test'")
-    bar = Bar('Recording', max=duration, check_tty=False)
+    bar = ChargingBar('Recording', max=duration, check_tty=False)
     recording = sounddevice.rec(int(duration * fs), samplerate=fs, channels=1, dtype="float32")
     for i in range(duration):
         sleep(1)
