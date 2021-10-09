@@ -23,6 +23,7 @@ class ContRecorder:
         self._current_background_noise = None
         self._working = False
         self._speaking = False
+        self._min_length_command = 1.0 # minimum length of a command in seconds
         os.makedirs("tmp", exist_ok=True)
 
     def _audio_callback(self, data, frames, time, status):
@@ -98,7 +99,11 @@ class ContRecorder:
                         stop = False
                         command = np.append(command, data)
                         stop_ts = timer()
-                        if stop_ts - start_ts >= 3.0:
+                        diff = stop_ts - start_ts
+                        if diff < self._min_length_command:
+                            continue
+                        
+                        if diff >= 3.0:
                             print("timeout")
                             stop = True
                         else:

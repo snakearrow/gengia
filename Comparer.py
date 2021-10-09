@@ -9,10 +9,11 @@ from scipy.spatial.distance import correlation
 
 class Comparer:
     
-    def __init__(self, directory: str):
+    def __init__(self, directory: str, threshold=2.0):
         self._dir = directory
         self._mfccs = {}
         self._lock = Lock()
+        self._threshold = threshold
 
     def _load_thread(self, filename: str):
         print(f"processing {filename}")
@@ -42,11 +43,8 @@ class Comparer:
         return dist
 
     def compare(self, filename: str):
-        print("starting compare")
         y, sr = librosa.load(filename)
         mfcc = librosa.feature.mfcc(y, sr)
-        
-        print("calculated features", flush=True)
         
         min_dist = 999999.0
         matched_filename = None
@@ -62,7 +60,7 @@ class Comparer:
                 min_dist = result
                 matched_filename = f
 
-        if matched_filename and min_dist <= 5.0:
+        if matched_filename and min_dist <= self._threshold:
             print(f"Matched {matched_filename} with dist {min_dist}")
             return matched_filename
 
