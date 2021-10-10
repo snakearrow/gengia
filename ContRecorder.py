@@ -7,14 +7,14 @@ import threading
 import soundfile
 import os
 from timeit import default_timer as timer
-import pyautogui
 from Comparer import Comparer
 from Audio import Audio
 
+
 class ContRecorder:
 
-    def __init__(self):
-        self._comparer = Comparer("commands")
+    def __init__(self, path_to_commands: str):
+        self._comparer = Comparer(path_to_commands)
         self._comparer.load()
         self._data_queue = queue.Queue()
         self._background_noise_queue = queue.Queue()
@@ -130,5 +130,5 @@ class ContRecorder:
 
 
 if __name__ == "__main__":
-    c = ContRecorder()
+    c = ContRecorder("commands")
     c.start()

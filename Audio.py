@@ -25,7 +25,7 @@ class Audio:
         i = 0
         while i < len(self._data):
             avg = np.average(absolute_data[i:i + step])
-            dbfs = 20*log10(avg)
+            dbfs = 20*log10(avg) # TODO check for Null
             if debug:
                 print(dbfs)
             self._dbfs.append(dbfs)
