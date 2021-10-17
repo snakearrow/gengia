@@ -1,0 +1,9 @@
+soundfile
+sounddevice
+librosa
+dtw
+numpy
+matplotlib
+progress
+scipy
+pyautogui

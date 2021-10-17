@@ -9,7 +9,7 @@ from scipy.spatial.distance import correlation
 
 class Comparer:
     
-    def __init__(self, directory: str, threshold=2.0):
+    def __init__(self, directory: str, threshold=3.0):
         self._dir = directory
         self._mfccs = {}
         self._lock = Lock()
@@ -36,6 +36,7 @@ class Comparer:
                 executor.submit(self._load_thread, f)
 
         print("Initialization done")
+        return len(all_files)
 
     @staticmethod
     def _compare_thread(mfcc, f_mfcc):

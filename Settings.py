@@ -5,17 +5,24 @@ import json
 
 class Settings:
 
-    _working_dir = None
+    _data_dir = None
     _device = None
     
     def __init__(self):
-        config_file = str(Path.home()) + "/.gengia/config"
+        config_file = str(Path.home()) + "/.gengia/config.json"
         with open(config_file, "r") as fp:
             config_data = json.load(fp)
-            
-        self._working_dir = config_data["WorkingDir"]
-        self._device = config_data["Device"]
         
+        self._device = config_data["device"]
+        self._data_dir = str(Path.home()) + "/.gengia"
+        
+    def get_data_dir(self):
+        return self._data_dir
+    
+    def get_device(self):
+        return self._device
+
+
 if __name__ == "__main__":
     s = Settings()
 

@@ -12,10 +12,10 @@ from Audio import Audio
 class CommandRecorder:
 
 
-    def __init__(self, path_to_commands: str):
+    def __init__(self, path_to_commands: str, device: str):
         os.makedirs(path_to_commands, exist_ok=True)
         sounddevice.default.samplerate = 44100
-        sounddevice.default.device = 'pulse'
+        sounddevice.default.device = device
         self._command_path = path_to_commands
 
 
@@ -83,9 +83,9 @@ class CommandRecorder:
                 dbfs.append(value)
             i += step
         
-        plt.plot(range(0, len(dbfs)), dbfs)
+        #plt.plot(range(0, len(dbfs)), dbfs)
         #plt.ion()
-        plt.show()
+        #plt.show()
         max_value = max(dbfs)
         min_value = min(dbfs)
         mean_value = (max_value + min_value) / 2.0

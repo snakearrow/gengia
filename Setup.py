@@ -9,7 +9,7 @@ from progress.bar import ChargingBar
 
 class Setup:
 
-    _working_dir = None
+    _data_dir = None
     _selected_device = None
 
     def __init__(self):
@@ -18,25 +18,26 @@ class Setup:
         print(31*"-")
         print("")
         
-        cur_dir = os.getcwd()
-        print(f"* The working directory is: {cur_dir}")
-        answer = input("  Would you like to change the working directory? [y/N] ")
-        if answer == "y":
-            print("  Please enter the new working directory (it will be created if it does not exist): ")
-            answer = input()
-            if not os.path.isdir(answer):
-                try:
-                    os.makedirs(answer, exist_ok=True)
-                    cur_dir = answer
-                    print(f"  Great, the new working directory is: {cur_dir}")
-                except os.error as e:
-                    print(e)
-                    sys.exit(1)
+        data_dir = str(Path.home()) + "/.gengia"
+        print(f"* The Gengia data directory is: {data_dir}")
+        if not os.path.isdir(data_dir):
+            try:
+                os.makedirs(data_dir, exist_ok=True)
+            except:
+                print(f"Could not create directory {data_dir}, exiting.")
+                sys.exit(1)
+                
+        else:
+            print(f"It seems like the folder {data_dir} already exists.")
+            print("Re-running the setup will delete and newly create the setup files!")
+            answer = input("Continue? [y/N] ")
+            if answer == "" or answer == "N":
+                sys.exit(0)
         
-        self._working_dir = cur_dir
+        self._data_dir = data_dir
         
         print("")
-        print("* Now, we will select the device to record audio with.\n  Press Enter to view a list of available devices.")
+        print("* Let's first select the device to record audio with.\n  Press Enter to view a list of available devices.")
         input()
         devices = sd.query_devices()
         i = 0
@@ -44,10 +45,11 @@ class Setup:
             print(f"  {i}  {device['name']}")
             i += 1
         
+        n_devices = i
         while True:
             answer = input("Select the number of the device to use: ")
             selected = int(answer)
-            if selected < 0 or selected >= i:
+            if selected < 0 or selected >= n_devices:
                 print(f"Error: Selected device {selected} does not exist, please choose another one")
                 continue
                 
@@ -67,13 +69,15 @@ class Setup:
                 time.sleep(1)
                 bar.next()
             sd.wait()
-            sd.play(recording)
+            bar.finish()
+            
             bar = ChargingBar('Playback', max=duration, check_tty=False)
             sd.play(recording)
             for i in range(duration):
                 time.sleep(1)
                 bar.next()
             sd.wait()
+            bar.finish()
             print("")
             answer = input("  Continue? If no, you can select another device. [Y/n] ")
             if answer == "n":
@@ -83,13 +87,12 @@ class Setup:
             break
         
         self._write_config()
-        print("*  The setup is finished. You can now start to use Gengia.")
-        
+        print("*  The setup is finished. You can now start to use Gengia, e.g. by recording some commands with 'gengia --record'.")
+    
+    
     def _write_config(self):
-        config_file = str(Path.home()) + "/.gengia"
-        os.makedirs(config_file, exist_ok=True)
-        config_file += "/config"
-        data = {"WorkingDir": self._working_dir, "Device": self._selected_device}
+        config_file = self._data_dir + "/config.json"
+        data = {"Device": self._selected_device}
         with open(config_file, "w") as fp:
             json.dump(data, fp)
         print(f"Wrote {config_file}")

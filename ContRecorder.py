@@ -6,31 +6,36 @@ from collections import deque
 import threading
 import soundfile
 import os
+import tempfile
 from timeit import default_timer as timer
 from Comparer import Comparer
 from Audio import Audio
+from Mapping import Mapping
 
 
 class ContRecorder:
 
-    def __init__(self, path_to_commands: str):
+    def __init__(self, path_to_commands: str, device: str):
         self._comparer = Comparer(path_to_commands)
-        self._comparer.load()
+        n_files = self._comparer.load()
+        if n_files <= 0:
+            print(f"WARN: Could not find any command audio files in {path_to_commands}")
+            print(f"Consider recording some audio commands first.")
+        
         self._data_queue = queue.Queue()
         self._background_noise_queue = queue.Queue()
         self._samplerate = 44100
-        sd.default.device = 'pulse'
+        sd.default.device = device
         self._current_background_noise = None
         self._working = False
         self._speaking = False
         self._min_length_command = 1.0 # minimum length of a command in seconds
-        os.makedirs("tmp", exist_ok=True)
 
     def _audio_callback(self, data, frames, time, status):
         self._data_queue.put(data.copy())
         self._background_noise_queue.put(data.copy())
 
-    def _background_noise_monitor_thread(self, every=1.5):
+    def _background_noise_monitor_thread(self, every=1.0):
         # monitor every X seconds
         start_ts = timer()
         buf = []
@@ -42,7 +47,7 @@ class ContRecorder:
                 audio = Audio(data=data)
                 avg = sum(audio.get_dbfs()) / len(audio.get_dbfs())
                 self._current_background_noise = avg
-                #print(avg)
+                print(avg)
                 buf = []
                 start_ts = timer()
 
@@ -52,7 +57,8 @@ class ContRecorder:
         audio = Audio(data=command)
         audio.amplify()
         audio.truncate_silence(self._current_background_noise)
-        filename = f"tmp/recorded_{time.time()}.wav"
+        tmpdir = tempfile.gettempdir()
+        filename = f"{tmpdir}/recorded_{time.time()}.wav"
         soundfile.write(filename, audio.get_data(), self._samplerate)
         print(f"wrote {filename}")
         matched_filename = self._comparer.compare(filename)
@@ -60,7 +66,7 @@ class ContRecorder:
         self._working = False
         if not matched_filename:
             return
-        # TODO: what to do on command
+        # TODO: what to do on command, use Mappings class
         return
 
     def start(self):
@@ -74,7 +80,6 @@ class ContRecorder:
             step = int(self._samplerate * (chunk_size/1000.0))
             
             start_ts = None
-            enough_data = False
             
             while True:
                 while self._working:
@@ -88,7 +93,8 @@ class ContRecorder:
                         data = buf[-step:]
                         audio = Audio(data=data, chunk_size=chunk_size)
                         avg_dbfs = audio.get_avg_dbfs()
-                        if avg_dbfs >= self._current_background_noise+10.0:
+                        if avg_dbfs >= self._current_background_noise+20.0: # TODO: the greater the background noise, the smaller this value should be
+                            print(f"avg dbfs: {avg_dbfs}, background noise: {self._current_background_noise}")
                             self._speaking = True
                             print(f"{time.time()}  start")
                             start_ts = timer()
@@ -116,9 +122,6 @@ class ContRecorder:
                         
                         if stop:
                             self._working = True
-                            #audio = Audio(data=command)
-                            #audio.amplify()
-                            #audio.truncate_silence()
                             self._speaking = False
                             t = threading.Thread(target=self._command_thread, args=(command.copy(),))
                             t.start()
