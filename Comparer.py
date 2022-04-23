@@ -29,7 +29,7 @@ class Comparer:
             for f in files:
                 if f.endswith(".wav"):
                     all_files.append(os.path.join(root, f))
-        print(f"found {len(all_files)} files")
+        print(f"found {len(all_files)} command files")
 
         with futures.ThreadPoolExecutor(max_workers=4) as executor:
             for f in all_files:

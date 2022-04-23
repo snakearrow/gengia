@@ -2,6 +2,7 @@ import sounddevice as sd
 import queue
 import numpy as np
 import time
+import socket
 from collections import deque
 import threading
 import soundfile
@@ -29,7 +30,9 @@ class ContRecorder:
         self._current_background_noise = None
         self._working = False
         self._speaking = False
+        self._done = False
         self._min_length_command = 1.0 # minimum length of a command in seconds
+        self._enough_background_noise_samples = False
 
     def _audio_callback(self, data, frames, time, status):
         self._data_queue.put(data.copy())
@@ -39,7 +42,9 @@ class ContRecorder:
         # monitor every X seconds
         start_ts = timer()
         buf = []
-        while True:
+        self._enough_background_noise_samples = False
+        n_samples = 0
+        while not self._done:
             buf.append(self._background_noise_queue.get())
             stop_ts = timer()
             if stop_ts - start_ts >= every and not self._speaking:
@@ -47,9 +52,14 @@ class ContRecorder:
                 audio = Audio(data=data)
                 avg = sum(audio.get_dbfs()) / len(audio.get_dbfs())
                 self._current_background_noise = avg
-                print(avg)
+                print(f"{avg:.1f}")
                 buf = []
                 start_ts = timer()
+                n_samples += 1
+                if n_samples >= 3:
+                    self._enough_background_noise_samples = True
+        
+        print("background noise thread quitting")
 
     def _command_thread(self, command):
         self._working = True
@@ -70,18 +80,30 @@ class ContRecorder:
         return
 
     def start(self):
+        sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
+        addr = ("localhost", 49173)
+        sock.bind(addr)
+        print(f"listening for start command on {addr}")
+        while True:
+            msg, _ = sock.recvfrom(128)
+            msg = msg.decode()
+            if msg == "start":
+                self._done = False
+                self._listen()
+    
+    def _listen(self):
         with sd.InputStream(channels=1, samplerate=self._samplerate, callback=self._audio_callback):
-            t = threading.Thread(target=self._background_noise_monitor_thread)
-            t.start()
+            background_noise_thread = threading.Thread(target=self._background_noise_monitor_thread)
+            background_noise_thread.start()
 
             command = np.array([])
             buf = np.array([])
-            chunk_size = 100 # in milliseconds
+            chunk_size = 250 # in milliseconds
             step = int(self._samplerate * (chunk_size/1000.0))
             
             start_ts = None
             
-            while True:
+            while not self._done:
                 while self._working:
                     time.sleep(0.01)
 
@@ -89,14 +111,14 @@ class ContRecorder:
                     data = self._data_queue.get()
                     buf = np.append(buf, data)
                     
-                    if self._current_background_noise and not self._speaking:
+                    if self._current_background_noise and self._enough_background_noise_samples and not self._speaking:
                         data = buf[-step:]
                         audio = Audio(data=data, chunk_size=chunk_size)
                         avg_dbfs = audio.get_avg_dbfs()
-                        if avg_dbfs >= self._current_background_noise+20.0: # TODO: the greater the background noise, the smaller this value should be
+                        if avg_dbfs and avg_dbfs >= self._current_background_noise+30.0: # TODO: the greater the background noise, the greater this value should be
                             print(f"avg dbfs: {avg_dbfs}, background noise: {self._current_background_noise}")
                             self._speaking = True
-                            print(f"{time.time()}  start")
+                            print(f"{time.time()} start")
                             start_ts = timer()
                             command = np.append(command, buf[-step*2:])
                             continue
@@ -125,6 +147,8 @@ class ContRecorder:
                             self._speaking = False
                             t = threading.Thread(target=self._command_thread, args=(command.copy(),))
                             t.start()
+                            t.join()
+                            self._done = True
                             buf = np.array([])
                             command = np.array([])
                             
