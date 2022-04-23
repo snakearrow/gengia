@@ -27,10 +27,10 @@ class CommandRecorder:
     def record(self, background_noise_threshold: int):
         fs = 44100
         
-        print(f"recording with background noise threshold: {background_noise_threshold} dBFS")
+        print(f"recording with background noise threshold: {background_noise_threshold:.2f} dBFS")
         while True:
             print("")
-            rec_name = input("Name of command: ")
+            rec_name = input("Name of command (or Ctrl+C to quit): ")
             duration = input("Duration in seconds (default=2): ")
             if duration == "":
                 duration = 2
@@ -89,7 +89,7 @@ class CommandRecorder:
         max_value = max(dbfs)
         min_value = min(dbfs)
         mean_value = (max_value + min_value) / 2.0
-        print(f"min dBFS: {min_value}, max dBFS: {max_value}, mean: {mean_value} dBFS")
+        print(f"min dBFS: {min_value:.2f}, max dBFS: {max_value:.2f}, mean: {mean_value:.2f} dBFS")
         # filter dBFSs so that only possible silence is present
         dbfs_silence = []
         for db in dbfs:
@@ -98,7 +98,7 @@ class CommandRecorder:
         
         avg_dbfs = sum(dbfs_silence) / len(dbfs_silence)
         max_dbfs = max(dbfs_silence)
-        print(f"background noise on average at {avg_dbfs} dBFS with peak {max_dbfs} dBFS")
+        print(f"background noise on average at {avg_dbfs:.2f} dBFS with peak {max_dbfs:.2f} dBFS")
         return avg_dbfs, max_dbfs
 
 

@@ -13,7 +13,7 @@ class Settings:
         with open(config_file, "r") as fp:
             config_data = json.load(fp)
         
-        self._device = config_data["device"]
+        self._device = config_data["Device"]
         self._data_dir = str(Path.home()) + "/.gengia"
         
     def get_data_dir(self):

@@ -19,7 +19,7 @@ class Comparer:
         print(f"processing {filename}")
 
         y, sr = librosa.load(filename)
-        mfcc = librosa.feature.mfcc(y, sr)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr)
         with self._lock:
             self._mfccs[filename] = mfcc
 
@@ -45,7 +45,7 @@ class Comparer:
 
     def compare(self, filename: str):
         y, sr = librosa.load(filename)
-        mfcc = librosa.feature.mfcc(y, sr)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr)
         
         min_dist = 999999.0
         matched_filename = None
